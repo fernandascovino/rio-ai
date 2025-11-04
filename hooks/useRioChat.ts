@@ -1,0 +1,122 @@
+import { useEffect, useMemo, useState } from 'react';
+
+export type ChatRole = 'user' | 'assistant';
+
+export interface ChatMessage {
+  role: ChatRole;
+  content: string;
+}
+
+interface UseRioChatOptions {
+  model?: string;
+  apiUrl?: string;
+  initialMessages?: ChatMessage[];
+  systemPrompt?: string | null;
+  historyLimit?: number | null;
+  errorMessage?: string;
+}
+
+const DEFAULT_API_URL = '/api/chat';
+const DEFAULT_MODEL = 'rio-2';
+const DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.';
+const DEFAULT_HISTORY_LIMIT = 6;
+const DEFAULT_ERROR_MESSAGE =
+  'Desculpe, ocorreu um erro ao me comunicar com a API. Por favor, tente novamente mais tarde.';
+
+export function useRioChat(options: UseRioChatOptions = {}) {
+  const {
+    model = DEFAULT_MODEL,
+    apiUrl,
+    initialMessages = [],
+    systemPrompt = DEFAULT_SYSTEM_PROMPT,
+    historyLimit = DEFAULT_HISTORY_LIMIT,
+    errorMessage = DEFAULT_ERROR_MESSAGE,
+  } = options;
+
+  const environmentApiUrl =
+    (import.meta.env.VITE_RIO_CHAT_PROXY_URL as string | undefined) ??
+    (import.meta.env.VITE_APP_RIO_CHAT_PROXY_URL as string | undefined);
+
+  const targetApiUrl = apiUrl ?? environmentApiUrl ?? DEFAULT_API_URL;
+
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const serializedInitialMessages = useMemo(
+    () => JSON.stringify(initialMessages),
+    [initialMessages]
+  );
+
+  useEffect(() => {
+    setMessages(initialMessages);
+  }, [serializedInitialMessages]);
+
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    if (event) {
+      event.preventDefault();
+    }
+
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
+
+    setInput('');
+    setIsLoading(true);
+
+    const recentMessages =
+      typeof historyLimit === 'number' && historyLimit >= 0 ? messages.slice(-historyLimit) : messages;
+
+    const payloadMessages = [
+      ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+      ...recentMessages,
+      userMessage,
+    ];
+
+    try {
+      const response = await fetch(targetApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: payloadMessages,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.choices?.[0]?.message?.content?.trim() ?? '',
+      };
+
+      if (assistantMessage.content) {
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch from Rio API', error);
+      const failureMessage: ChatMessage = {
+        role: 'assistant',
+        content: errorMessage,
+      };
+      setMessages((prev) => [...prev, failureMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    messages,
+    input,
+    isLoading,
+    setInput,
+    handleSubmit,
+  };
+}

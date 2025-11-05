@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -52,6 +52,31 @@ export function useRioChat(options: UseRioChatOptions = {}) {
     setMessages(initialMessages);
   }, [serializedInitialMessages]);
 
+  const removeMessageAt = useCallback(
+    (index: number) => {
+      setMessages((prev) => {
+        if (index < 0 || index >= prev.length) {
+          return prev;
+        }
+        const next = prev.slice(0, index).concat(prev.slice(index + 1));
+        return next;
+      });
+    },
+    [setMessages]
+  );
+
+  const insertMessageAt = useCallback(
+    (index: number, message: ChatMessage) => {
+      setMessages((prev) => {
+        const safeIndex = Math.min(Math.max(index, 0), prev.length);
+        const next = [...prev];
+        next.splice(safeIndex, 0, message);
+        return next;
+      });
+    },
+    [setMessages]
+  );
+
   const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
     if (event) {
       event.preventDefault();
@@ -65,12 +90,14 @@ export function useRioChat(options: UseRioChatOptions = {}) {
     setInput('');
     setIsLoading(true);
 
-    const recentMessages =
-      typeof historyLimit === 'number' && historyLimit >= 0 ? messages.slice(-historyLimit) : messages;
+    const currentMessages =
+      typeof historyLimit === 'number' && historyLimit >= 0
+        ? messages.slice(-historyLimit)
+        : messages;
 
     const payloadMessages = [
       ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-      ...recentMessages,
+      ...currentMessages,
       userMessage,
     ];
 
@@ -117,6 +144,8 @@ export function useRioChat(options: UseRioChatOptions = {}) {
     input,
     isLoading,
     setInput,
+    removeMessageAt,
+    insertMessageAt,
     handleSubmit,
   };
 }

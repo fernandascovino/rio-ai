@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React from 'react';
 import type { Model } from '../../types';
 import {
   ArrowLeft,
@@ -26,22 +26,71 @@ const BENCHMARKS = [
   { metric: 'LiveCodeBench v6', base: '66.0', preview: '69.4', latent: '69.6' },
 ];
 
-const REASONING_MODES = [
+type ComparisonMetric = 'gpqa' | 'aime';
+
+type LabelPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+type LabelOverride = LabelPosition | Partial<Record<ComparisonMetric, LabelPosition>>;
+
+type ModelComparisonDatum = {
+  model: string;
+  cost: number;
+  gpqa: number;
+  aime: number;
+  color: string;
+  isRio: boolean;
+};
+
+const LABEL_POSITION_OVERRIDES: Partial<Record<string, LabelOverride>> = {
+  'Gemini 2.5 Pro': 'top-right',
+  'Gemini 2.5 Flash': 'bottom-right',
+  'Claude Sonnet 4.5': 'bottom-left',
+  'Gemini 2.5 Flash-Lite': { gpqa: 'bottom-right' },
+};
+
+const MODEL_COMPARISON: ModelComparisonDatum[] = [
+  { model: 'Gemini 2.5 Pro', cost: 10, gpqa: 86.4, aime: 88, color: '#9CA3AF', isRio: false },
+  { model: 'GPT-5', cost: 10, gpqa: 85.7, aime: 94.6, color: '#9CA3AF', isRio: false },
+  { model: 'Rio 2.5 Preview', cost: 0.15, gpqa: 77.2, aime: 95, color: '#1E40AF', isRio: true },
+  { model: 'Gemini 2.5 Flash', cost: 2.5, gpqa: 79, aime: 78, color: '#9CA3AF', isRio: false },
+  { model: 'GPT-5 mini', cost: 2, gpqa: 82.3, aime: 91.1, color: '#9CA3AF', isRio: false },
+  { model: 'Gemini 2.5 Flash-Lite', cost: 0.4, gpqa: 71, aime: 69, color: '#9CA3AF', isRio: false },
+  { model: 'GPT-5 nano', cost: 0.4, gpqa: 71.2, aime: 85.2, color: '#9CA3AF', isRio: false },
+  { model: 'Claude Sonnet 4.5', cost: 15, gpqa: 83.4, aime: 87, color: '#9CA3AF', isRio: false },
+  { model: 'Claude Haiku 4.5', cost: 5, gpqa: 73, aime: 80.7, color: '#9CA3AF', isRio: false },
+];
+
+const COST_TICKS = [0.1, 1, 10];
+const COST_DOMAIN = {
+  min: COST_TICKS[0],
+  max: 30,
+};
+const DEFAULT_Y_MIN = 65;
+const LABEL_POSITION_CONFIG: Record<
+  LabelPosition,
+  { dx: number; dy: number; anchor: 'start' | 'end' }
+> = {
+  'top-right': { dx: 12, dy: -12, anchor: 'start' },
+  'top-left': { dx: -12, dy: -12, anchor: 'end' },
+  'bottom-right': { dx: 12, dy: 16, anchor: 'start' },
+  'bottom-left': { dx: -12, dy: 16, anchor: 'end' },
+};
+
+const METRIC_CONFIGS: Array<{
+  metric: ComparisonMetric;
+  label: string;
+  yTicks: number[];
+  minY?: number;
+}> = [
   {
-    id: 'explicit',
-    label: 'Sem raciocínio latente',
-    description:
-      'Fluxo tradicional com cadeia de pensamento explícita. Menor latência e custo previsível para integrações.',
-    highlights: ['Menor custo', 'Latência reduzida'],
-    scores: { AIME: '93.3', HMMT: '80.0', GPQA: '75.8', LiveCodeBench: '69.4' },
+    metric: 'aime',
+    label: 'AIME 2025',
+    yTicks: [70, 80, 90, 100],
   },
   {
-    id: 'latent',
-    label: 'Com raciocínio latente',
-    description:
-      'Ativa o mecanismo inspirado no SwiReasoning, permitindo que o modelo pense em espaço latente antes de verbalizar.',
-    highlights: ['+6.6 pts no HMMT', 'Melhor para avaliações críticas'],
-    scores: { AIME: '95.0', HMMT: '86.6', GPQA: '77.2', LiveCodeBench: '69.6' },
+    metric: 'gpqa',
+    label: 'GPQA-Diamond',
+    yTicks: [70, 80, 90],
+    minY: 67,
   },
 ];
 
@@ -94,47 +143,169 @@ const segmentStyle = (start: string, end: string) => {
     width: `${Math.max(width, 4)}%`,
   };
 };
-const averageGain = (
-  BENCHMARKS.reduce((total, row) => total + (parseScore(row.latent) - parseScore(row.base)), 0) / BENCHMARKS.length
-).toFixed(1);
-const topMetric = BENCHMARKS.reduce(
-  (best, row) => {
-    const delta = parseScore(row.latent) - parseScore(row.base);
-    return delta > best.delta ? { name: row.metric, delta } : best;
-  },
-  { name: BENCHMARKS[0].metric, delta: parseScore(BENCHMARKS[0].latent) - parseScore(BENCHMARKS[0].base) },
-);
+const CHART_DIMENSIONS = { width: 720, height: 340 };
+const CHART_PADDING = { top: 20, right: 32, bottom: 60, left: 58 };
 
-export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, onBack }) => {
-  const [activeMode, setActiveMode] = useState<(typeof REASONING_MODES)[number]['id']>('explicit');
-  const mode = useMemo(
-    () => REASONING_MODES.find((item) => item.id === activeMode) ?? REASONING_MODES[0],
-    [activeMode],
-  );
-
-  const ScoreBar: React.FC<{ label: string; score: string; baseScore: string }> = ({
-    label,
-    score,
-    baseScore,
-  }) => {
-    const width = `${Math.min(parseScore(score), 100)}%`;
-    const delta = (parseScore(score) - parseScore(baseScore)).toFixed(1);
-    const positive = parseFloat(delta) >= 0;
-
-    return (
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs font-semibold text-prose">
-          <span>{label}</span>
-          <span>{score}</span>
-        </div>
-        <div className="h-2 rounded-full bg-slate-100">
-          <div className="h-2 rounded-full bg-rio-primary" style={{ width }} />
-        </div>
-        <p className="text-xs text-prose-light">Δ {delta} vs base {positive ? '▲' : '▼'}</p>
-      </div>
-    );
+const ComparisonChart: React.FC<{
+  metric: ComparisonMetric;
+  label: string;
+  yTicks: number[];
+  minY?: number;
+}> = ({ metric, label, yTicks, minY }) => {
+  const { width, height } = CHART_DIMENSIONS;
+  const { top, right, bottom, left } = CHART_PADDING;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const logMin = Math.log10(COST_DOMAIN.min);
+  const logMax = Math.log10(COST_DOMAIN.max);
+  const metricValues = MODEL_COMPARISON.map((item) => item[metric]);
+  const domainMinBase = minY ?? DEFAULT_Y_MIN;
+  const domainMin = Math.min(domainMinBase, ...metricValues, yTicks[0]);
+  const domainMax = Math.max(Math.max(...metricValues), yTicks[yTicks.length - 1]);
+  const getX = (cost: number) => {
+    const ratio = (Math.log10(cost) - logMin) / Math.max(logMax - logMin, 1);
+    return left + ratio * plotWidth;
+  };
+  const getY = (value: number) => {
+    const ratio = (value - domainMin) / Math.max(domainMax - domainMin, 1);
+    return height - bottom - ratio * plotHeight;
+  };
+  const formatCost = (value: number) => {
+    const formatted = value >= 1 ? (Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)) : value.toFixed(1);
+    return `$${formatted}`;
+  };
+  const resolveLabelPosition = (model: string, defaultAnchor: 'start' | 'end') => {
+    const override = LABEL_POSITION_OVERRIDES[model];
+    const specific =
+      typeof override === 'string' ? override : override?.[metric];
+    const fallback: LabelPosition = defaultAnchor === 'end' ? 'top-left' : 'top-right';
+    const position = specific ?? (typeof override === 'string' ? override : fallback);
+    return LABEL_POSITION_CONFIG[position];
   };
 
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 sm:p-5">
+      <div className="text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.5em] text-rio-primary">{label}</p>
+      </div>
+      <div className="mt-4">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-80 w-full">
+          <line
+            x1={left}
+            y1={height - bottom}
+            x2={width - right}
+            y2={height - bottom}
+            className="stroke-slate-300"
+            strokeWidth={1}
+          />
+          <line
+            x1={left}
+            y1={top}
+            x2={left}
+            y2={height - bottom}
+            className="stroke-slate-300"
+            strokeWidth={1}
+          />
+          <line
+            x1={left}
+            y1={height - bottom}
+            x2={width - right}
+            y2={height - bottom}
+            className="stroke-slate-300"
+            strokeWidth={1}
+          />
+          {yTicks.map((tick) => {
+            const y = getY(tick);
+            return (
+              <text
+                key={`${metric}-y-${tick}`}
+                x={left - 10}
+                y={y + 4}
+                textAnchor="end"
+                className="text-[11px] fill-slate-500"
+              >
+                {tick}
+              </text>
+            );
+          })}
+          {COST_TICKS.map((tick) => {
+            const x = getX(tick);
+            return (
+              <text
+                key={`${metric}-x-${tick}`}
+                x={x}
+                y={height - bottom + 18}
+                textAnchor="middle"
+                className="text-[11px] fill-slate-500"
+              >
+                {formatCost(tick)}
+              </text>
+            );
+          })}
+          <text
+            x={(left + width - right) / 2}
+            y={height - 8}
+            textAnchor="middle"
+            className="text-[11px] fill-slate-400"
+          >
+            Custo por 1M tokens (USD)
+          </text>
+          {MODEL_COMPARISON.map((item) => {
+            const x = getX(item.cost);
+            const y = getY(item[metric]);
+            const defaultAnchor = x > left + plotWidth * 0.6 ? 'end' : 'start';
+            const { dx, dy, anchor } = resolveLabelPosition(item.model, defaultAnchor);
+            const labelX = x + dx;
+            const labelY = y + dy;
+            const radius = item.isRio ? 7 : 5;
+            const isBelow = dy >= 0;
+            const lineStartX = x + (anchor === 'end' ? -radius : radius);
+            const lineStartY = y + (isBelow ? radius : -radius);
+            const targetX = labelX;
+            const targetY = labelY - (isBelow ? 2 : 4);
+            const dxLine = targetX - lineStartX;
+            const dyLine = targetY - lineStartY;
+            const lineLength = Math.hypot(dxLine, dyLine);
+            const shorten = 4;
+            const scale =
+              lineLength > shorten ? (lineLength - shorten) / lineLength : 0;
+            const lineEndX = lineStartX + dxLine * scale;
+            const lineEndY = lineStartY + dyLine * scale;
+            return (
+              <g key={`${metric}-${item.model}`}>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={radius + (item.isRio ? 1 : 0)}
+                  fill={item.isRio ? '#1E40AF' : '#FFFFFF'}
+                  stroke={item.isRio ? '#1E40AF' : item.color}
+                  strokeWidth={item.isRio ? 2.5 : 1.5}
+                />
+                <line
+                  x1={lineStartX}
+                  y1={lineStartY}
+                  x2={lineEndX}
+                  y2={lineEndY}
+                  className="stroke-slate-300"
+                  strokeWidth={1}
+                />
+                <text
+                  x={labelX}
+                  y={labelY}
+                  textAnchor={anchor}
+                  className="text-[11px] font-semibold fill-slate-700"
+                >
+                  {item.model}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+};
+export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, onBack }) => {
   return (
     <div className="bg-white">
       <section className="border-b border-slate-200 bg-gradient-to-b from-white via-slate-50 to-white">
@@ -147,7 +318,7 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
             Voltar para todos os modelos
           </button>
 
-          <div className="mt-10 grid gap-10 lg:grid-cols-2">
+          <div className="mt-10 space-y-10">
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rio-primary shadow-sm ring-1 ring-slate-200">
                 Prévia exclusiva
@@ -198,39 +369,16 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
               </div>
               <div className="relative flex h-full flex-col gap-6">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rio-primary">Modo dual</p>
-                  <h2 className="mt-2 text-2xl font-bold text-prose">Um modelo, duas formas de pensar</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rio-primary">Comparativo externo</p>
+                  <h2 className="mt-2 text-2xl font-bold text-prose">Rio 2.5 Preview versus modelos populares</h2>
                   <p className="mt-2 text-sm text-prose-light">
-                    Alterne entre fluxo padrão e raciocínio latente sem trocar de modelo ou de stack.
+                    Dois gráficos mostram o custo por 1M tokens no eixo X (escala logarítmica) e as pontuações no eixo Y para AIME 2025 e GPQA-Diamond.
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {REASONING_MODES.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveMode(item.id)}
-                      className={`rounded-2xl border px-4 py-3 text-left transition ${
-                        activeMode === item.id
-                          ? 'border-rio-primary bg-rio-primary/5 text-prose'
-                          : 'border-slate-200 text-prose-light hover:border-slate-300'
-                      }`}
-                    >
-                      <p className="text-sm font-semibold">{item.label}</p>
-                      <p className="mt-1 text-xs">{item.highlights[0]}</p>
-                    </button>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {METRIC_CONFIGS.map((config) => (
+                    <ComparisonChart key={config.metric} {...config} />
                   ))}
-                </div>
-                <div className="space-y-3 rounded-2xl border border-slate-100 bg-white/80 p-4">
-                  <ScoreBar label="AIME 2025" score={mode.scores.AIME} baseScore="85.0" />
-                  <ScoreBar label="HMMT 2025" score={mode.scores.HMMT} baseScore="71.4" />
-                  <ScoreBar label="GPQA" score={mode.scores.GPQA} baseScore="73.4" />
-                  <ScoreBar label="LiveCodeBench" score={mode.scores.LiveCodeBench} baseScore="66.0" />
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-xs text-prose">
-                  <p className="font-semibold text-prose">Ganho prático</p>
-                  <p className="mt-1 text-prose-light">
-                    Até +10 pontos em AIME e +6.6 pontos em HMMT com o modo latente inspirado no SwiReasoning.
-                  </p>
                 </div>
               </div>
             </div>
@@ -379,3 +527,15 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+

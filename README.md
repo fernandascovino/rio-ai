@@ -23,6 +23,9 @@ Portal institucional da Prefeitura do Rio/Escritório de Dados para apresentar a
 - **Configuração Vite** – `vite.config.ts` publica o dev server em `http://localhost:3000`, define prefixos de ambiente (`VITE_` e `RIO_`) e provisiona proxy local para `/api`.
 - **UX** – `AnimateOnScroll` usa IntersectionObserver para “revelar” blocos; `TerminalAnimation` simula logs do pipeline evolutivo; `ModelDetailView` rederiva a UI com base na seleção atual.
 
+## Documentação Complementar
+- `docs/rio-2_5-preview.txt` – resumo técnico do Rio 2.5 Preview com a linhagem de treinamento, modos de raciocínio e benchmarks detalhados (inclusive a referência ao SwiReasoning).
+
 ## Pré-requisitos
 - Node.js 18+ (recomendado 20 LTS).
 - npm 9+ (ou pnpm/yarn equivalente).

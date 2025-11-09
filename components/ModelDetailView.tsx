@@ -8,6 +8,7 @@ import { DetailCodeSnippets } from './detail/DetailCodeSnippets';
 import { DetailSpecs } from './detail/DetailSpecs';
 import { AnimateOnScroll } from './AnimateOnScroll';
 import { ArrowUpRight } from 'lucide-react';
+import { Rio25PreviewDetail } from './detail/Rio25PreviewDetail';
 
 interface ModelDetailViewProps {
   model: Model;
@@ -15,6 +16,10 @@ interface ModelDetailViewProps {
 }
 
 export const ModelDetailView: React.FC<ModelDetailViewProps> = ({ model, onBack }) => {
+  if (model.name === 'Rio 2.5 Preview') {
+    return <Rio25PreviewDetail model={model} onBack={onBack} />;
+  }
+
   return (
     <div className="bg-white">
       <AnimateOnScroll>

@@ -417,6 +417,8 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
   const cardGridRef = useRef<HTMLDivElement | null>(null);
   const rioRef = useRef<HTMLDivElement | null>(null);
   const [connectorLayout, setConnectorLayout] = useState<ConnectorLayout | null>(null);
+  const huggingFaceWeightsUrl =
+    model.huggingFaceUrl ?? 'https://huggingface.co/krzonkalla/rio-2.5-preview-beta';
 
   const measureConnectorLayout = useCallback(() => {
     if (
@@ -514,19 +516,36 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
           </button>
 
           <div className="mt-6 space-y-10">
-            <div className="space-y-6">
-              <h1 className="text-4xl font-bold leading-tight text-prose sm:text-5xl">{model.name}</h1>
-              <p className="text-lg text-prose-light leading-relaxed">{model.description}</p>
-              <div className="flex flex-wrap gap-2">
-                {model.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600"
-                  >
-                    {tag}
-                  </span>
-                ))}
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-6 lg:max-w-3xl">
+                <h1 className="text-4xl font-bold leading-tight text-prose sm:text-5xl">{model.name}</h1>
+                <p className="text-lg text-prose-light leading-relaxed">{model.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {model.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
+
+              {huggingFaceWeightsUrl && (
+                <a
+                  href={huggingFaceWeightsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-prose shadow-sm transition hover:border-rio-primary/50 hover:text-rio-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rio-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white lg:self-start"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50">
+                    <img src="/logos/huggingface-2.svg" alt="Logomarca do Hugging Face" className="h-6 w-6" />
+                  </span>
+                  <span className="text-base">Acessar pesos</span>
+                  <ArrowUpRight className="h-4 w-4" />
+                </a>
+              )}
             </div>
 
             <div className="relative rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-lg">
@@ -621,13 +640,12 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rio-primary">
-                  Modos de treinamento
+                  Como treinamos esse modelo
                 </p>
                 <h2 className="mt-2 text-3xl font-bold text-prose">RL, SFT e destilação rodando juntos</h2>
               </div>
               <p className="text-sm text-prose-light max-w-lg">
-                Executamos Reinforcement Learning, Supervised Fine-Tuning e On-Policy Distillation no mesmo loop
-                interleaved para manter raciocínio profundo e alinhamento institucional.
+                Treinamento nativo em 4-bit
               </p>
             </div>
             <div className="mt-10 rounded-[32px] border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 sm:p-8">
@@ -820,40 +838,6 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
             </div>
             <div className="space-y-12 lg:col-span-2">
               <DetailSpecs model={model} />
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-sm font-semibold text-prose">Por que liberar a prévia?</p>
-                <p className="mt-2 text-sm text-prose-light">
-                  Queremos que parceiros avaliem o modo latente, antecipem integrações e devolvam feedback antes da versão
-                  estável.
-                </p>
-                <ul className="mt-4 space-y-2 text-sm text-prose-light">
-                  <li>• Métricas transparentes para comparações.</li>
-                  <li>• Compatível com qualquer fluxo baseado em Qwen3.</li>
-                  <li>• Feedback aplicado ao pipeline de RL proprietário.</li>
-                </ul>
-                <div className="mt-6 space-y-3 text-sm">
-                  {model.huggingFaceUrl && (
-                    <a
-                      href={model.huggingFaceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 font-semibold text-prose transition hover:border-rio-primary/40 hover:text-rio-primary"
-                    >
-                      Acessar Hugging Face
-                      <ArrowUpRight className="h-4 w-4" />
-                    </a>
-                  )}
-                  <a
-                    href="https://swireasoning.github.io/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 font-semibold text-prose transition hover:border-rio-primary/40 hover:text-rio-primary"
-                  >
-                    Ler sobre SwiReasoning
-                    <ArrowUpRight className="h-4 w-4" />
-                  </a>
-                </div>
-              </div>
             </div>
           </section>
         </AnimateOnScroll>

@@ -47,26 +47,6 @@ export const RIO_MODELS: Model[] = [
     license: 'Creative Commons Attribution 4.0',
     datasets: ['nvidia/OpenScienceReasoning-2', 'nvidia/Nemotron-Post-Training-Dataset-v1'],
     huggingFaceUrl: 'https://huggingface.co/IPLANRIO/rio-2.5-preview',
-    useCases: [
-      {
-        title: 'Experimentação de Novas Arquiteturas',
-        description:
-          'Ideal para a comunidade acadêmica e de pesquisa explorar as capacidades da nossa mais nova arquitetura de modelo.',
-        Icon: FlaskConical,
-      },
-      {
-        title: 'Aplicações Eficientes',
-        description:
-          'Seu tamanho otimizado o torna perfeito para implantação em ambientes com restrições de recursos, sem sacrificar a qualidade.',
-        Icon: Hammer,
-      },
-      {
-        title: 'Feedback da Comunidade',
-        description:
-          'Use o modelo, explore seus limites e nos ajude a moldar a versão final com seu feedback e contribuições.',
-        Icon: GraduationCap,
-      },
-    ],
     codeSnippets: [
       {
         lang: 'Python',

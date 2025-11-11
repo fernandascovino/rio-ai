@@ -104,32 +104,14 @@ const TRAINING_MODES = [
   {
     Icon: Dumbbell,
     title: 'Reinforcement Learning',
-    summary:
-      'Aplicamos PPO com funções de recompensa institucionais e verificadores automáticos para alinhar tom, segurança e utilidade.',
-    highlights: [
-      'Escala de recompensas com três pilares: segurança, aderência e clareza técnica.',
-      'Rollouts controlados mantêm divergência KL baixa para preservar o backbone.',
-    ],
   },
   {
     Icon: Bolt,
     title: 'Supervised Fine-Tuning',
-    summary:
-      'Batches supervisionados com prompts reais da prefeitura garantem estilo formal e narrativa consistente durante todo o ciclo.',
-    highlights: [
-      'Misturamos 30% de exemplos longos para preservar raciocínio passo a passo.',
-      'Dataset curado inclui linguagem jurídica, atendimento e relatórios técnicos.',
-    ],
   },
   {
     Icon: Goal,
     title: 'On-Policy Distillation',
-    summary:
-      'Destilamos os melhores trajetos gerados on-policy para servir respostas acessíveis replicando o modo latente.',
-    highlights: [
-      'Captura do pensamento intermediário antes da resposta final.',
-      'Mantém custo de inferência baixo sem perder ganhos do RL.',
-    ],
   },
 ];
 
@@ -647,30 +629,6 @@ export const Rio25PreviewDetail: React.FC<Rio25PreviewDetailProps> = ({ model, o
                 Executamos Reinforcement Learning, Supervised Fine-Tuning e On-Policy Distillation no mesmo loop
                 interleaved para manter raciocínio profundo e alinhamento institucional.
               </p>
-            </div>
-            <div className="mt-8 grid gap-6 md:grid-cols-3">
-              {TRAINING_MODES.map(({ Icon, title, summary, highlights }) => (
-                <div key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                      <Icon className="h-6 w-6 text-rio-primary" />
-                    </span>
-                    <div>
-                      <p className="text-base font-semibold text-prose">{title}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-slate-400">Simultâneo</p>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm text-prose leading-relaxed">{summary}</p>
-                  <ul className="mt-4 space-y-2 text-sm text-prose-light">
-                    {highlights.map((item) => (
-                      <li key={item} className="flex items-start gap-2">
-                        <span className="mt-1 block h-1.5 w-1.5 rounded-full bg-rio-primary" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
             </div>
             <div className="mt-10 rounded-[32px] border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 sm:p-8">
               <div className="flex flex-col gap-2">
